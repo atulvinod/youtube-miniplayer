@@ -28,7 +28,6 @@ function intersectionCallback(miniPlayerContainerElement, defaultMainVideoParent
                 const playerControls = mainVideoPlayer.querySelector('.ytp-chrome-bottom');
                 videoElement.style.left = "0px";
                 if (entry.isIntersecting) {
-                    console.log('Intersecting')
                     const { width, height } = defaultMainVideoParentElement.getBoundingClientRect();
                     videoElement.style.width = width + 'px';
                     playerControls.style.width = width + 'px';
@@ -36,7 +35,6 @@ function intersectionCallback(miniPlayerContainerElement, defaultMainVideoParent
                     defaultMainVideoParentElement.appendChild(mainVideoPlayer);
                     miniPlayerContainerElement.style.display = "none";
                 } else {
-                    console.log('not Interesecting')
                     miniPlayerContainerElement.style.display = "block";
                     const { width, height } = miniPlayerContainerElement.getBoundingClientRect();
                     videoElement.style.width = width + 'px';
@@ -74,8 +72,6 @@ function main() {
     const mainVideoPlayer = document.querySelector(MAIN_VIDEO_PLAYER_SELECTOR);
     if (mainVideoPlayer) {
         const mainVideoPlayerParent = mainVideoPlayer.parentNode;
-        console.log('detected element ', mainVideoPlayer)
-        console.log('detected parent ', mainVideoPlayerParent);
         const { width, height } = mainVideoPlayerParent.getBoundingClientRect();
         const miniPlayerContainer = createContainerElement(width * 0.3, height * 0.4);
         const observer = new IntersectionObserver(intersectionCallback(miniPlayerContainer, mainVideoPlayerParent, mainVideoPlayer));
