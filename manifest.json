@@ -6,7 +6,7 @@
     "content_scripts":[{
         "js":["scripts/content.js"],
         "matches":[
-            "*://www.youtube.com/watch?v=*"
+            "*://www.youtube.com/*"
         ]
     }]
 }

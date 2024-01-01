@@ -1,16 +1,37 @@
 
 const MAIN_VIDEO_PLAYER_SELECTOR = 'div#container.style-scope.ytd-player';
+const MINI_PLAYER_ID = 'scroll-mini-player'
+
+/**
+ * @type{IntersectionObserver}
+ */
+let INTERSECTION_OBSERVER;
+
+function logger(message, level = 'log') {
+    switch (level) {
+        case 'log':
+            console.log(`[MINI PLAYER] : ${message}`)
+            break;
+        default:
+            console.error(`[MINI PLAYER] : ${message}`)
+    }
+}
 
 function createContainerElement(width, height) {
-    const customDiv = document.createElement('div');
-    customDiv.style.position = "fixed";
-    customDiv.style.bottom = "0";
-    customDiv.style.right = "0"
-    customDiv.style.width = width + 'px';
-    customDiv.style.height = height + 'px';
-    customDiv.style.zIndex = "11111"
-    customDiv.style.display = "none";
-    return customDiv;
+    let container = document.getElementById(MINI_PLAYER_ID);
+    if (container) {
+        return container;
+    }
+    container = document.createElement('div');
+    container.style.position = "fixed";
+    container.style.bottom = "0";
+    container.style.right = "0"
+    container.style.width = width + 'px';
+    container.style.height = height + 'px';
+    container.style.zIndex = "11111"
+    container.style.display = "none";
+    container.id = MINI_PLAYER_ID;
+    return container;
 }
 
 /**
@@ -28,6 +49,7 @@ function intersectionCallback(miniPlayerContainerElement, defaultMainVideoParent
                 const playerControls = mainVideoPlayer.querySelector('.ytp-chrome-bottom');
                 videoElement.style.left = "0px";
                 if (entry.isIntersecting) {
+                    logger('intersecting window')
                     const { width, height } = defaultMainVideoParentElement.getBoundingClientRect();
                     videoElement.style.width = width + 'px';
                     playerControls.style.width = width + 'px';
@@ -35,6 +57,7 @@ function intersectionCallback(miniPlayerContainerElement, defaultMainVideoParent
                     defaultMainVideoParentElement.appendChild(mainVideoPlayer);
                     miniPlayerContainerElement.style.display = "none";
                 } else {
+                    logger('out of window')
                     miniPlayerContainerElement.style.display = "block";
                     const { width, height } = miniPlayerContainerElement.getBoundingClientRect();
                     videoElement.style.width = width + 'px';
@@ -68,16 +91,71 @@ function waitForNode(selector, callback) {
     observer.observe(targetNode, config);
 }
 
-function main() {
+function mountMiniPlayer() {
     const mainVideoPlayer = document.querySelector(MAIN_VIDEO_PLAYER_SELECTOR);
     if (mainVideoPlayer) {
-        const mainVideoPlayerParent = mainVideoPlayer.parentNode;
+        logger('mounting mini player')
+        const mainVideoPlayerParent = mainVideoPlayer.parentNode;        
+        const mainVideoPlayerVideoElement = mainVideoPlayer.querySelector('video')?.getBoundingClientRect();
+
         const { width, height } = mainVideoPlayerParent.getBoundingClientRect();
         const miniPlayerContainer = createContainerElement(width * 0.3, height * 0.4);
-        const observer = new IntersectionObserver(intersectionCallback(miniPlayerContainer, mainVideoPlayerParent, mainVideoPlayer));
-        observer.observe(mainVideoPlayerParent);
-        document.querySelector('body').appendChild(miniPlayerContainer);
+        if (!INTERSECTION_OBSERVER) {
+            INTERSECTION_OBSERVER = new IntersectionObserver(intersectionCallback(miniPlayerContainer, mainVideoPlayerParent, mainVideoPlayer));
+        }
+        INTERSECTION_OBSERVER.observe(mainVideoPlayerParent);
+        if (!document.querySelector(`#${MINI_PLAYER_ID}`)) {
+            document.querySelector('body').appendChild(miniPlayerContainer);
+        }
     }
 }
-setTimeout(main, 1500);
+
+function handleMiniPlayerRemoval() {
+    const miniplayer = document.querySelector(`#${MINI_PLAYER_ID}`);
+    if (INTERSECTION_OBSERVER) {
+        INTERSECTION_OBSERVER.disconnect()
+    }
+    if (miniplayer) {
+        miniplayer.style.display = 'none';
+    }
+}
+
+function getVideoId() {
+    const urlObject = new URL(window.location.href);
+    return urlObject.searchParams.get('v');
+}
+
+function isVideoLoaded() {
+    const videoId = getVideoId();
+    return (
+        document.querySelector(`ytd-watch-flexy[video-id='${videoId}']`) !== null
+    );
+}
+
+function watchPageHandler() {
+    if (!window.location.href.includes('watch')) {
+        logger('not the watch page');
+        handleMiniPlayerRemoval();
+        return;
+    }
+
+    function waitForWindow() {
+        if (isVideoLoaded()) {
+            logger('video loaded detected');
+            setTimeout(mountMiniPlayer, 1000);
+            clearInterval(checkVideoTimer);
+        }
+    }
+
+    let checkVideoTimer;
+    logger('setting up check video timer')
+    checkVideoTimer = setInterval(waitForWindow, 111);
+}
+
+
+
+// setTimeout(main, 1500);
 // waitForNode(MAIN_VIDEO_PLAYER_SELECTOR, main);
+window.addEventListener('yt-navigate-finish', () => {
+    watchPageHandler();
+}, true)
