@@ -1,16 +1,16 @@
 
 const MAIN_VIDEO_PLAYER_SELECTOR = 'div#container.style-scope.ytd-player';
 
-function createContainerElement(children) {
+function createContainerElement() {
     const customDiv = document.createElement('div');
     customDiv.style.position = "fixed";
     customDiv.style.bottom = "0";
     customDiv.style.right = "0"
-    // customDiv.style.backgroundColor = "red";
     customDiv.style.width = "40rem";
     customDiv.style.height = "25rem";
     customDiv.style.zIndex = "11111"
-    customDiv.appendChild(children);
+    customDiv.style.border = "2px solid yellow"
+    customDiv.style.display = "none";
     return customDiv;
 }
 
@@ -26,17 +26,24 @@ function intersectionCallback(miniPlayerContainerElement, defaultMainVideoParent
         entries.forEach(entry => {
             try {
                 const videoElement = mainVideoPlayer.querySelector('video');
-                console.log(mainVideoPlayer);
-                console.log(videoElement);
+                const playerControls = mainVideoPlayer.querySelector('.ytp-chrome-bottom');
+
+                videoElement.style.left = "0px";
                 if (entry.isIntersecting) {
+                    console.log('Intersecting')
                     const { width, height } = defaultMainVideoParentElement.getBoundingClientRect();
                     videoElement.style.width = width + 'px';
+                    playerControls.style.width = width + 'px';
                     videoElement.style.height = height + 'px';
                     defaultMainVideoParentElement.appendChild(mainVideoPlayer);
+                    miniPlayerContainerElement.style.display = "none";
                 } else {
+                    console.log('not Interesecting')
+                    miniPlayerContainerElement.style.display = "block";
                     const { width, height } = miniPlayerContainerElement.getBoundingClientRect();
                     videoElement.style.width = width + 'px';
                     videoElement.style.height = height + 'px';
+                    playerControls.style.width = width + 'px';
                     miniPlayerContainerElement.appendChild(mainVideoPlayer);
                 }
             } catch (err) {
@@ -71,7 +78,7 @@ function main() {
         const mainVideoPlayerParent = mainVideoPlayer.parentNode;
         console.log('detected element ', mainVideoPlayer)
         console.log('detected parent ', mainVideoPlayerParent);
-        const miniPlayerContainer = createContainerElement(mainVideoPlayer);
+        const miniPlayerContainer = createContainerElement();
         const observer = new IntersectionObserver(intersectionCallback(miniPlayerContainer, mainVideoPlayerParent, mainVideoPlayer));
         observer.observe(mainVideoPlayerParent);
         document.querySelector('body').appendChild(miniPlayerContainer);
