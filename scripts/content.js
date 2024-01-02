@@ -162,10 +162,10 @@ function watchPageHandler() {
     checkVideoTimer = setInterval(waitForWindow, 111);
 }
 
-
-
-// setTimeout(main, 1500);
-// waitForNode(MAIN_VIDEO_PLAYER_SELECTOR, main);
+window.addEventListener('yt-navigate-start', () => {
+    logger('start navigation ' + window.location.href);
+})
 window.addEventListener('yt-navigate-finish', () => {
+    logger('end navigation')
     watchPageHandler();
 }, true)
