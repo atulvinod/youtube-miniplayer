@@ -53,11 +53,11 @@ function shiftVideoToMiniPlayer(mainVideoPlayer, miniPlayerContainerElement) {
 function shiftVideoToOriginalParent(mainVideoPlayer, miniPlayerContainerElement, defaultMainVideoParentElement, originalVideoDimensions, originalPlayerControlDimensions) {
     const videoElement = mainVideoPlayer.querySelector('video');
     const playerControls = mainVideoPlayer.querySelector(PLAYER_CONTROL_SELECTOR);
+    playerControls.style.width = originalPlayerControlDimensions.width + 'px';
     const { width, height, left } = originalVideoDimensions;
     videoElement.style.width = width + 'px';
     videoElement.style.height = height + 'px';
     videoElement.style.left = left;
-    playerControls.style.width = originalPlayerControlDimensions.width + 'px';
     defaultMainVideoParentElement.appendChild(mainVideoPlayer);
     miniPlayerContainerElement.style.display = "none";
 }
