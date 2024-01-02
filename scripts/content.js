@@ -21,7 +21,7 @@ function logger(message, level = 'log') {
     }
 }
 
-function createContainerElement(width, height) {
+function getMiniPlayerContainerElement(width, height) {
     let container = document.getElementById(MINI_PLAYER_ID);
     if (container) {
         return container;
@@ -119,7 +119,7 @@ function mountMiniPlayer() {
         const { originalPlayerControlDimensions, originalVideoElementDimensions } = getOriginalVideoDimensions(mainVideoPlayer, true);
         const mainVideoPlayerParent = document.querySelector(DEFAULT_MAIN_VIDEO_PLAYER_PARENT_SELECTOR);
         const { width, height } = mainVideoPlayerParent.getBoundingClientRect();
-        const miniPlayerContainer = createContainerElement(width * 0.3, height * 0.4);
+        const miniPlayerContainer = getMiniPlayerContainerElement(width * 0.3, height * 0.4);
 
         if (INTERSECTION_OBSERVER) {
             INTERSECTION_OBSERVER.disconnect();
