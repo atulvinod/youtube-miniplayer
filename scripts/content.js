@@ -2,11 +2,14 @@
 const MAIN_VIDEO_PLAYER_SELECTOR = 'div#container.style-scope.ytd-player';
 const MINI_PLAYER_ID = 'scroll-mini-player'
 const PLAYER_CONTROL_SELECTOR = '.ytp-chrome-bottom';
+const DEFAULT_MAIN_VIDEO_PLAYER_PARENT_SELECTOR = 'ytd-player'
+
+let CURRENT_ORIGINAL_PLAYER_DIMENSIONS = null;
 
 /**
  * @type{IntersectionObserver}
  */
-let INTERSECTION_OBSERVER;
+let INTERSECTION_OBSERVER = null;
 
 function logger(message, level = 'log') {
     switch (level) {
@@ -86,7 +89,14 @@ function intersectionCallback(miniPlayerContainerElement, defaultMainVideoParent
     }
 }
 
-function getOriginalVideoDimensions(mainVideoPlayer) {
+function getOriginalVideoDimensions(mainVideoPlayer, override = false) {
+    if (CURRENT_ORIGINAL_PLAYER_DIMENSIONS && !override) {
+        return CURRENT_ORIGINAL_PLAYER_DIMENSIONS;
+    }
+    if (!mainVideoPlayer) {
+        throw new Error('Main Video player element required to get original player video dimensions');
+    }
+
     let originalVideoElementDimensions = {}
     const originalVideoPlayer = mainVideoPlayer.querySelector('video')
     if (originalVideoPlayer) {
@@ -97,7 +107,8 @@ function getOriginalVideoDimensions(mainVideoPlayer) {
     }
     const originalPlayerControlDimensions = document.querySelector(PLAYER_CONTROL_SELECTOR)?.getBoundingClientRect();
 
-    return { originalPlayerControlDimensions, originalVideoElementDimensions }
+    CURRENT_ORIGINAL_PLAYER_DIMENSIONS = { originalPlayerControlDimensions, originalVideoElementDimensions }
+    return CURRENT_ORIGINAL_PLAYER_DIMENSIONS;
 
 }
 
@@ -105,14 +116,17 @@ function mountMiniPlayer() {
     const mainVideoPlayer = document.querySelector(MAIN_VIDEO_PLAYER_SELECTOR);
     if (mainVideoPlayer) {
         logger('mounting mini player')
-        const { originalPlayerControlDimensions, originalVideoElementDimensions } = getOriginalVideoDimensions(mainVideoPlayer);
-        const mainVideoPlayerParent = mainVideoPlayer.parentNode;
+        const { originalPlayerControlDimensions, originalVideoElementDimensions } = getOriginalVideoDimensions(mainVideoPlayer, true);
+        const mainVideoPlayerParent = document.querySelector(DEFAULT_MAIN_VIDEO_PLAYER_PARENT_SELECTOR);
         const { width, height } = mainVideoPlayerParent.getBoundingClientRect();
         const miniPlayerContainer = createContainerElement(width * 0.3, height * 0.4);
 
-        if (!INTERSECTION_OBSERVER) {
-            INTERSECTION_OBSERVER = new IntersectionObserver(intersectionCallback(miniPlayerContainer, mainVideoPlayerParent, mainVideoPlayer, originalVideoElementDimensions, originalPlayerControlDimensions));
+        if (INTERSECTION_OBSERVER) {
+            INTERSECTION_OBSERVER.disconnect();
         }
+
+        INTERSECTION_OBSERVER = new IntersectionObserver(intersectionCallback(miniPlayerContainer, mainVideoPlayerParent, mainVideoPlayer, originalVideoElementDimensions, originalPlayerControlDimensions));
+
         INTERSECTION_OBSERVER.observe(mainVideoPlayerParent);
         if (!document.querySelector(`#${MINI_PLAYER_ID}`)) {
             document.querySelector('body').appendChild(miniPlayerContainer);
@@ -124,6 +138,7 @@ function handleMiniPlayerRemoval() {
     const miniplayer = document.querySelector(`#${MINI_PLAYER_ID}`);
     if (INTERSECTION_OBSERVER) {
         INTERSECTION_OBSERVER.disconnect()
+        INTERSECTION_OBSERVER = null;
     }
     if (miniplayer) {
         miniplayer.style.display = 'none';
@@ -162,10 +177,25 @@ function watchPageHandler() {
     checkVideoTimer = setInterval(waitForWindow, 111);
 }
 
+function pageNavigateStartHandler() {
+    /**
+     * To readd the original player back to initial state in order to
+     * prevent the breaking of the player when navigating to the watch page again
+     */
+    document.documentElement.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
+}
+
 window.addEventListener('yt-navigate-start', () => {
     logger('start navigation ' + window.location.href);
+    pageNavigateStartHandler();
 })
+
 window.addEventListener('yt-navigate-finish', () => {
     logger('end navigation')
     watchPageHandler();
 }, true)
+
+watchPageHandler();
