@@ -1,6 +1,7 @@
 
 const MAIN_VIDEO_PLAYER_SELECTOR = 'div#container.style-scope.ytd-player';
 const MINI_PLAYER_ID = 'scroll-mini-player'
+const PLAYER_CONTROL_SELECTOR = '.ytp-chrome-bottom';
 
 /**
  * @type{IntersectionObserver}
@@ -34,6 +35,30 @@ function createContainerElement(width, height) {
     return container;
 }
 
+function shiftVideoToMiniPlayer(mainVideoPlayer, miniPlayerContainerElement) {
+    const videoElement = mainVideoPlayer.querySelector('video');
+    const playerControls = mainVideoPlayer.querySelector(PLAYER_CONTROL_SELECTOR);
+    miniPlayerContainerElement.style.display = "block";
+    const { width, height } = miniPlayerContainerElement.getBoundingClientRect();
+    videoElement.style.left = '0px';
+    videoElement.style.width = width + 'px';
+    videoElement.style.height = height + 'px';
+    playerControls.style.width = width + 'px';
+    miniPlayerContainerElement.appendChild(mainVideoPlayer);
+}
+
+function shiftVideoToOriginalParent(mainVideoPlayer, miniPlayerContainerElement, defaultMainVideoParentElement, originalVideoDimensions, originalPlayerControlDimensions) {
+    const videoElement = mainVideoPlayer.querySelector('video');
+    const playerControls = mainVideoPlayer.querySelector(PLAYER_CONTROL_SELECTOR);
+    const { width, height, left } = originalVideoDimensions;
+    videoElement.style.width = width + 'px';
+    videoElement.style.height = height + 'px';
+    videoElement.style.left = left;
+    playerControls.style.width = originalPlayerControlDimensions.width + 'px';
+    defaultMainVideoParentElement.appendChild(mainVideoPlayer);
+    miniPlayerContainerElement.style.display = "none";
+}
+
 /**
  * 
  * @param {HTMLElement} miniPlayerContainerElement 
@@ -41,29 +66,17 @@ function createContainerElement(width, height) {
  * @param {HTMLElement} mainVideoPlayer
  * @returns 
  */
-function intersectionCallback(miniPlayerContainerElement, defaultMainVideoParentElement, mainVideoPlayer) {
+function intersectionCallback(miniPlayerContainerElement, defaultMainVideoParentElement, mainVideoPlayer, originalVideoDimensions, originalPlayerControlDimensions) {
+
     return function (entries, observer) {
         entries.forEach(entry => {
             try {
-                const videoElement = mainVideoPlayer.querySelector('video');
-                const playerControls = mainVideoPlayer.querySelector('.ytp-chrome-bottom');
-                videoElement.style.left = "0px";
                 if (entry.isIntersecting) {
                     logger('intersecting window')
-                    const { width, height } = defaultMainVideoParentElement.getBoundingClientRect();
-                    videoElement.style.width = width + 'px';
-                    playerControls.style.width = width + 'px';
-                    videoElement.style.height = height + 'px';
-                    defaultMainVideoParentElement.appendChild(mainVideoPlayer);
-                    miniPlayerContainerElement.style.display = "none";
+                    shiftVideoToOriginalParent(mainVideoPlayer, miniPlayerContainerElement, defaultMainVideoParentElement, originalVideoDimensions, originalPlayerControlDimensions);
                 } else {
                     logger('out of window')
-                    miniPlayerContainerElement.style.display = "block";
-                    const { width, height } = miniPlayerContainerElement.getBoundingClientRect();
-                    videoElement.style.width = width + 'px';
-                    videoElement.style.height = height + 'px';
-                    playerControls.style.width = width + 'px';
-                    miniPlayerContainerElement.appendChild(mainVideoPlayer);
+                    shiftVideoToMiniPlayer(mainVideoPlayer, miniPlayerContainerElement);
                 }
             } catch (err) {
                 console.log('Intersection observer error ', err)
@@ -73,35 +86,32 @@ function intersectionCallback(miniPlayerContainerElement, defaultMainVideoParent
     }
 }
 
-function waitForNode(selector, callback) {
-    const targetNode = document.body;
-    const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-            const nodes = Array.from(mutation.addedNodes);
-            for (const node of nodes) {
-                if (node.nodeType === 1 && node.matches(selector)) {
-                    observer.disconnect();
-                    callback();
-                    return;
-                }
-            }
-        });
-    });
-    const config = { childList: true, subtree: true };
-    observer.observe(targetNode, config);
+function getOriginalVideoDimensions(mainVideoPlayer) {
+    let originalVideoElementDimensions = {}
+    const originalVideoPlayer = mainVideoPlayer.querySelector('video')
+    if (originalVideoPlayer) {
+        const { width, height } = originalVideoPlayer.getBoundingClientRect();
+        const left = originalVideoPlayer.style.left;
+        originalVideoElementDimensions = { width, height, left }
+        logger('original video dimensions ' + JSON.stringify(originalVideoElementDimensions));
+    }
+    const originalPlayerControlDimensions = document.querySelector(PLAYER_CONTROL_SELECTOR)?.getBoundingClientRect();
+
+    return { originalPlayerControlDimensions, originalVideoElementDimensions }
+
 }
 
 function mountMiniPlayer() {
     const mainVideoPlayer = document.querySelector(MAIN_VIDEO_PLAYER_SELECTOR);
     if (mainVideoPlayer) {
         logger('mounting mini player')
-        const mainVideoPlayerParent = mainVideoPlayer.parentNode;        
-        const mainVideoPlayerVideoElement = mainVideoPlayer.querySelector('video')?.getBoundingClientRect();
-
+        const { originalPlayerControlDimensions, originalVideoElementDimensions } = getOriginalVideoDimensions(mainVideoPlayer);
+        const mainVideoPlayerParent = mainVideoPlayer.parentNode;
         const { width, height } = mainVideoPlayerParent.getBoundingClientRect();
         const miniPlayerContainer = createContainerElement(width * 0.3, height * 0.4);
+
         if (!INTERSECTION_OBSERVER) {
-            INTERSECTION_OBSERVER = new IntersectionObserver(intersectionCallback(miniPlayerContainer, mainVideoPlayerParent, mainVideoPlayer));
+            INTERSECTION_OBSERVER = new IntersectionObserver(intersectionCallback(miniPlayerContainer, mainVideoPlayerParent, mainVideoPlayer, originalVideoElementDimensions, originalPlayerControlDimensions));
         }
         INTERSECTION_OBSERVER.observe(mainVideoPlayerParent);
         if (!document.querySelector(`#${MINI_PLAYER_ID}`)) {
